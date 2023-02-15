@@ -1,7 +1,8 @@
 #!/bin/bash
+profile=****
 lbarn=$1
 echo "name,type" > ruleinfo.csv
-aws elbv2 describe-rules --listener-arn $lbarn --profile medibuddy | jq '.Rules[].Conditions[].Values' | tr -d "[]\","| sed '/^$/d' | sed "s/$/,/g"  >> name
-aws elbv2 describe-rules --listener-arn $lbarn --profile medibuddy | jq '.Rules[].Actions[].Type'| tr -d '"' >> type
+aws elbv2 describe-rules --listener-arn $lbarn --profile $profile | jq '.Rules[].Conditions[].Values' | tr -d "[]\","| sed '/^$/d' | sed "s/$/,/g"  >> name
+aws elbv2 describe-rules --listener-arn $lbarn --profile $profile | jq '.Rules[].Actions[].Type'| tr -d '"' >> type
 pr -mts' ' name type | column -t >> ruleinfo.csv
 rm -f name type

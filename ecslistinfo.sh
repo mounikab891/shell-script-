@@ -51,8 +51,8 @@ echo "$TD"
 for i in $TD 
 do
 echo "Please Wait, We Are Working on It...!: $c"
-aws ecs describe-services --services $service  --cluster $cluster --region $region --profile $profile | jq -r '.services[].serviceArn' | cut -d "/" -f2 |  >> service
-aws ecs describe-services --services $service  --cluster $cluster --region $region --profile $profile | jq -r '.services[].serviceArn'| cut -d "/" -f2 |  sed "s/$/,/g" >>s-service
+aws ecs describe-services --services $service  --cluster $cluster --region $region --profile $profile | jq -r '.services[].serviceArn' | cut -d "/" -f3 |  >> service
+aws ecs describe-services --services $service  --cluster $cluster --region $region --profile $profile | jq -r '.services[].serviceArn'| cut -d "/" -f3 |  sed "s/$/,/g" >>s-service
 echo "---------------" >> service
 
 aws ecs describe-task-definition --task-definition $i  --region $region --profile $profile | jq -r '.taskDefinition.containerDefinitions[].cpu, .taskDefinition.cpu' | grep -v null | grep -vw 0  >> cpu

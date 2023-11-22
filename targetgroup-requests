@@ -1,0 +1,63 @@
+#!/bin/bash
+
+profile=****
+region=****
+cluster_name=****
+output_file="output.csv"
+aws_account_id=****
+
+# Remove the existing output file if it exists
+[ -e "$output_file" ] && rm "$output_file"
+
+# Step 1: Get the list of all services in the cluster
+services=$(aws ecs list-services --cluster $cluster_name --region $region --profile $profile --query "serviceArns" | sed 's:.*/::' | tr -d "[]\","| sed '/^[[:space:]]*$/d')
+
+# Step 2: Get the list of target group names for each service
+target_group_names=$(aws cloudwatch list-metrics --namespace AWS/ApplicationELB --metric-name RequestCount --dimensions Name=TargetGroup | jq -r '.Metrics[].Dimensions[] | select(.Name == "TargetGroup") | .Value' | sort -u)
+
+# Step 3: Validate target_group_names with target group names from ECS services
+for service in $services; do
+  # Get the target group name for the current service
+  tgname=$(aws ecs describe-services --cluster $cluster_name --services $service --query 'services[0].loadBalancers[0].targetGroupArn' --output text | cut -d'/' -f2)
+
+  # Validate the target group name
+  matching_target_group_names=$(echo "$target_group_names" | grep "$tgname" | awk '{print $1}')
+
+  # Iterate over each unique matching target group name
+  for matching_target_group_name in $matching_target_group_names; do
+    # Run the AWS CLI command to get the LoadBalancer value
+    load_balancer_value=$(aws cloudwatch list-metrics --namespace AWS/ApplicationELB --metric-name RequestCount --dimensions Name=TargetGroup,Value="${matching_target_group_name}" | jq -r '.Metrics[].Dimensions[] | select(.Name == "LoadBalancer") | .Value' | sort -u)
+
+    # Run the AWS CLI command to get the sum of Requests with the matching target_group_name
+    value=$(aws cloudwatch get-metric-statistics \
+      --namespace AWS/ApplicationELB \
+      --metric-name RequestCount \
+      --dimensions Name=TargetGroup,Value="${matching_target_group_name}" Name=LoadBalancer,Value="${load_balancer_value}" \
+      --start-time $(date -u -v-4w '+%Y-%m-%dT%H:%M:%SZ') \
+      --end-time $(date -u '+%Y-%m-%dT%H:%M:%SZ') \
+      --period 86400 \
+      --statistics Sum \
+      --query 'Datapoints[0].Sum')
+
+    # Run the AWS CLI command to get tags for the target group
+    target_group_tags_response=$(aws elbv2 describe-tags --resource-arns arn:aws:elasticloadbalancing:$region:$aws_account_id:$matching_target_group_name --profile $profile --region $region  | jq -r '.TagDescriptions[].Tags[] | select(.Key == "Team") | .Value')
+echo $target_group_tags_response
+    # Extract the "Team" tag value from the JSON response using jq
+# Extract the "Team" tag value from the JSON response using jq
+# Extract the "Team" tag value from the JSON response using jq
+#team_tag_value=$(echo "$target_group_tags_response" | jq -r '.TagDescriptions[0].Tags[] | select(.Key == "Team") | .Value // "Not Found"')
+
+    # Check if tags are present and in the expected format
+    # if [ -n "$target_group_tags_response" ] && [ "$(echo "$target_group_tags_response" | jq -e '.[0] | has("Tags")')" == "true" ]; then
+    #   # Get the value of the "Team" tag from the tags
+    #   team_tag_value=$(echo "$target_group_tags_response" | jq -r '.TagDescriptions[0].Tags[] | select(.Key == "Team") | .Value')
+    # else
+    #   team_tag_value="Not Found"
+    # fi
+
+    # Print the result to CSV file, including the "Team" tag value
+    echo "${service}, ${matching_target_group_name}, ${load_balancer_value},${value}, ${target_group_tags_response}" >> "$output_file"
+  done
+done
+
+echo "Output stored in $output_file"

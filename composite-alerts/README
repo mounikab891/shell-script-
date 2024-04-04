@@ -1,0 +1,30 @@
+
+AWS ECS Critical Alerts Script
+This script automates the creation of CloudWatch alarms for monitoring critical metrics (CPU Utilization and Running Task Count) of AWS ECS services. The aim of these alarms is to notify when CPU utilization exceeds a threshold and when the task count reaches its maximum capacity.
+
+Note: Alarms are triggered only when both CPU utilization and Running Task Count reach their respective thresholds simultaneously.
+
+1. Clone the Repository: Clone this repository to your local machine.
+   git clone <repository_url>
+   Install Dependencies: Ensure you have the AWS CLI installed and configured with appropriate   crdentials.
+
+   Configure Script: Edit the script (criticalalerts.sh) to set the necessary parameters like profile, region, SNS_ARN, and accountid. Ensure that the clusters array contains the names of the ECS clusters you want     
+   to monitor.
+
+2. Run the Script: Execute the script to create the CloudWatch alarms.
+
+   ./criticalalerts.sh
+   Verify Alarms: Check the AWS Management Console or use the AWS CLI to verify that the alarms have been created successfully.
+3. Parameters
+   clusters: An array containing the names of ECS clusters to monitor.
+   profile: The AWS CLI profile to use.
+   region: The AWS region where the ECS clusters are located.
+   SNS_ARN: The ARN of the SNS topic where alarm notifications will be sent.
+   accountid: Your AWS account ID.
+4. Aim of the Alarms
+   CPU Utilization: The alarm for CPU Utilization notifies when the CPU utilization of an ECS service exceeds a specified threshold.
+   Running Task Count: The alarm for Running Task Count notifies when the number of running tasks in an ECS service reaches its maximum capacity.
+5. Script Details
+   The script dynamically fetches the service names for each cluster and creates CloudWatch alarms for CPU Utilization and Running Task Count for each service.
+   It then combines these alarms into composite alarms to provide comprehensive monitoring.
+   Alarms are skipped for services where the maximum tasks count is 0, as there are no tasks to monitor.
